@@ -1,0 +1,15 @@
+import {useState} from 'react';
+import {api,won,errorText,shortDate,type BankPurchase,type Purchase,type Person} from './api';
+import {newId} from './id';
+import {Field} from './ui';
+import {useCategories} from './Categories';
+export function ShareForm({bank,purchase,people,done}:{bank?:BankPurchase;purchase?:Purchase;people:Person[];done:()=>void}){
+ const total=purchase?.total??-(bank?.amount??0);
+ const[own,setOwn]=useState(String(purchase?.own_amount??total)),[person,setPerson]=useState(purchase?.debt?.person||''),[category,setCategory]=useState(bank?.expense_category||'Еда вне дома'),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const[key]=useState(newId);const categories=useCategories();
+ return <form className="form-content" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{const items=purchase?purchase.items.map(({product_id,menu_product_id,name,category,unit_price,quantity})=>({product_id,menu_product_id:menu_product_id||null,name,category,unit_price,quantity})):[{product_id:null,name:bank?.merchant||'Покупка',category,unit_price:total,quantity:1}];const data={merchant:purchase?.merchant||bank?.merchant||'Покупка',occurred_at:purchase?.occurred_at||bank!.occurred_at,note:purchase?.note||'',items,receipt_total:total,own_amount:Number(own),person:Number(own)<total?person:'',debt_kind:purchase?.debt?.kind||'friend',version:purchase?.version};await api(purchase?'/purchases/'+purchase.id:'/bank/transactions/'+bank!.id+'/purchase?version='+bank!.version,purchase?'PUT':'POST',data,key);done()}catch(e){setError(errorText(e))}finally{setBusy(false)}}}>
+ <h3>{purchase?.merchant||bank?.merchant}</h3><p className="hint">{shortDate(purchase?.occurred_at||bank!.occurred_at)} · Расход учитывается в периоде покупки</p><div className="share-equation"><span>Оплачено<strong>{won(total)}</strong></span><span>Мой расход<strong>{won(Number(own)||0)}</strong></span><span>Мне вернут<strong>{won(Math.max(0,total-(Number(own)||0)))}</strong></span></div>
+ <Field label="Моя доля, ₩"><input type="number" inputMode="numeric" required min="0" max={total} step="1" value={own} onChange={e=>setOwn(e.target.value)}/></Field>{Number(own)<total&&<Field label="Кто вернёт остальное"><input required maxLength={200} list="share-people" placeholder="Имя друга" value={person} onChange={e=>setPerson(e.target.value)}/><datalist id="share-people">{people.map(p=><option key={p.id}>{p.name}</option>)}</datalist></Field>}
+ {!purchase&&<Field label="Категория моего расхода"><select value={category} onChange={e=>setCategory(e.target.value)}>{!categories.includes(category)&&<option>{category}</option>}{categories.map(c=><option key={c}>{c}</option>)}</select></Field>}
+ <p className="hint">Сумма списания останется {won(total)}. В расходы попадёт твоя доля, остаток появится в долгах выбранного человека. Позиции чека можно заполнить позже.</p>{error&&<p className="error" role="alert">{error}</p>}<button className="primary full" disabled={busy}>{busy?'Сохраняем…':'Сохранить долю и долг'}</button></form>
+}

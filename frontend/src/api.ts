@@ -1,10 +1,11 @@
 export type Barcode={barcode:string;name:string;category:string};
 export type Product={id:string;barcode:string;name:string;category:string;last_price:number|null;last_merchant:string|null};
 export type MenuProduct={id:string;merchant_id:string;merchant:string;name:string;category:string;price:number;last_price:number|null;version:number};
-export type BankPurchase={id:string;merchant:string;amount:number;occurred_at:string;version:number};
+export type BankPurchase={id:string;merchant:string;amount:number;occurred_at:string;version:number;expense_category?:string};
 export type MerchantReport={start:string;end:string;merchants:{merchant:string;own_amount:number;total:number;unitemized:number;purchase_count:number;items:{name:string;category:string;quantity:number;own_amount:number;total:number}[]}[]};
 export type Line={product_id:string|null;menu_product_id?:string|null;name:string;category:string;unit_price:number;quantity:number};
-export type Debt={id:string;person:string;direction:'receivable'|'payable';kind:string;principal:number;settled:number;remaining:number;occurred_at:string;purchase_id:string|null};
+export type Person={id:string;name:string;note:string;version:number;receivable:number;payable:number;debt_count:number};
+export type Debt={id:string;person_id:string|null;person:string;direction:'receivable'|'payable';kind:string;principal:number;settled:number;remaining:number;occurred_at:string;purchase_id:string|null};
 export type Purchase={id:string;merchant:string;occurred_at:string;note:string;total:number;own_amount:number;version:number;items:Line[];debt:Debt|null};
 export type Payment={id:string;created_at:string;bank_transaction_id:string|null;kind:string;amount:number;occurred_at:string;note:string;version:number;purchase_id:string|null;debt_id:string|null;person:string};
 export type Rule={id:string;match:string;category:string};
@@ -23,3 +24,5 @@ export async function api<T>(path:string,method='GET',data?:unknown,key?:string)
  return body as T;
 }
 export const errorText=(e:unknown)=>e instanceof Error?e.message:'Ошибка соединения';
+
+export type ExpenseReport={start:string;end:string;category:string|null;merchant:string|null;total:number;rows:{id:string;source:'purchase'|'bank';merchant:string;occurred_at:string;amount:number;paid:number;own_amount:number;purchase:Purchase|null;bank:BankPurchase|null;items:(Line&{own_amount:number;category_label:string})[]}[]};

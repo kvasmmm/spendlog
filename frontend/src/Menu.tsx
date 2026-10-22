@@ -1,8 +1,10 @@
+import {useCategories} from './Categories';
 import {useEffect,useState} from 'react';
 import {Plus,Pencil,UtensilsCrossed,Search} from 'lucide-react';
-import {api,categories,errorText,won,type MenuProduct,type MerchantReport} from './api';
+import {api,errorText,won,type MenuProduct,type MerchantReport} from './api';
 import {Field} from './ui';
 export function MenuForm({product,merchants,done}:{product?:MenuProduct;merchants:string[];done:()=>void}){
+ const categories=useCategories();
  const[name,setName]=useState(product?.name||''),[merchant,setMerchant]=useState(product?.merchant||''),[price,setPrice]=useState(product?String(product.price):''),[category,setCategory]=useState(product?.category||'Еда вне дома'),[busy,setBusy]=useState(false),[error,setError]=useState('');
  return <form className="form-content" onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{await api(product?'/menu-products/'+product.id:'/menu-products',product?'PUT':'POST',{name,merchant,price:Number(price),category,version:product?.version});done()}catch(e){setError(errorText(e))}finally{setBusy(false)}}}>
  <p className="hint">Блюдо, напиток или услуга без штрихкода. Цена подставляется в новый чек; старые покупки сохраняют свои цены.</p>

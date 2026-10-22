@@ -55,3 +55,21 @@ def test_menu_migration_preserves_existing_item_foreign_keys(tmp_path):
         assert s.execute('PRAGMA foreign_key_check').fetchall()==[]
         assert s.execute('SELECT id,product_id,menu_product_id,quantity,unit_price FROM items').fetchone()==('item','food',None,3,1000)
         assert s.execute('SELECT amount FROM payments').fetchone()[0]==-3000
+
+def test_people_migration_groups_old_names_without_changing_debts(tmp_path):
+    import sqlite3
+    root=Path(__file__).resolve().parents[1];path=tmp_path/'old-debts.db'
+    env={**os.environ,'DATABASE_URL':'sqlite:///'+str(path)}
+    def run(*args):
+        result=subprocess.run([sys.executable,'-m','alembic',*args],cwd=root,env=env,capture_output=True,text=True)
+        assert result.returncode==0,result.stdout+result.stderr
+    run('upgrade','c83e102d5a61')
+    with sqlite3.connect(path) as s:
+        s.execute("INSERT INTO debts(id,person,direction,kind,principal,occurred_at) VALUES ('d1','Друг','receivable','loan',20000,'2026-10-22T00:00:00+00:00')")
+        s.execute("INSERT INTO debts(id,person,direction,kind,principal,occurred_at) VALUES ('d2','ДРУГ','payable','loan',5000,'2026-10-22T00:00:00+00:00')")
+    run('upgrade','head');run('check')
+    with sqlite3.connect(path) as s:
+        assert s.execute('SELECT COUNT(*) FROM people').fetchone()[0]==1
+        assert s.execute('SELECT COUNT(DISTINCT person_id) FROM debts').fetchone()[0]==1
+        assert s.execute('SELECT person,principal FROM debts ORDER BY id').fetchall()==[('Друг',20000),('ДРУГ',5000)]
+        assert s.execute('PRAGMA foreign_key_check').fetchall()==[]

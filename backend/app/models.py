@@ -65,11 +65,19 @@ class Payment(Base):
     note: Mapped[str] = mapped_column(Text, default='')
     version: Mapped[int] = mapped_column(Integer, default=1)
     __table_args__ = (CheckConstraint('amount != 0'),)
+class Person(Base):
+    __tablename__ = 'people'
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    name: Mapped[str] = mapped_column(String(200))
+    name_key: Mapped[str] = mapped_column(String(400), unique=True)
+    note: Mapped[str] = mapped_column(Text, default='', server_default='')
+    version: Mapped[int] = mapped_column(Integer, default=1)
 class Debt(Base):
     __tablename__ = 'debts'
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
     purchase_id: Mapped[str | None] = mapped_column(ForeignKey('purchases.id', ondelete='CASCADE'), unique=True, nullable=True)
     person: Mapped[str] = mapped_column(String(200))
+    person_id: Mapped[str | None] = mapped_column(ForeignKey('people.id'), nullable=True)
     direction: Mapped[str] = mapped_column(String(20))
     kind: Mapped[str] = mapped_column(String(30))
     principal: Mapped[int] = mapped_column(Integer)

@@ -1,6 +1,7 @@
+import {useCategories} from './Categories';
 import {useState} from 'react';
 import {ChevronDown,Search,Check,AlertCircle} from 'lucide-react';
-import {won,categories} from './api';
+import {won} from './api';
 import {bulkEligible,previewGroups,importSummary,type Batch,type BankRow,type Choices,type Decision,type Classification,type PreviewFilter} from './bankPreview';
 const date=(s:string)=>new Date(s).toLocaleString('ru-RU',{timeZone:'Asia/Seoul',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 function decisionLabel(row:BankRow,decision?:Decision){
@@ -12,6 +13,7 @@ function decisionLabel(row:BankRow,decision?:Decision){
  return row.data.amount>0?'Поступление · не доход':decision.category||'Расход';
 }
 export function BankPreview({batch,choices,busy,change,bulk,setCategory,confirm}:{batch:Batch;choices:Choices;busy:boolean;change:(id:string,patch:Partial<Decision>)=>void;bulk:(rows:BankRow[],kind:Classification)=>void;setCategory:(rows:BankRow[],category:string)=>void;confirm:()=>void}){
+ const categories=useCategories();
  const[filter,setFilter]=useState<PreviewFilter>(()=>batch.rows.some(r=>!choices[r.id]?.action)?'attention':'all');
  const[search,setSearch]=useState('');
  const summary=importSummary(batch.rows,choices);

@@ -12,7 +12,7 @@ def register(app):
 
     def view(s, menu):
         latest=s.scalar(select(Item.unit_price).join(Purchase,Item.purchase_id==Purchase.id).where(Item.menu_product_id==menu.id).order_by(Purchase.occurred_at.desc(),Purchase.created_at.desc()).limit(1))
-        return {**l.dump(menu),'merchant':s.get(Merchant,menu.merchant_id).name,'last_price':latest}
+        return {**l.dump(menu),'category':l.category_resolver(s)(menu.category),'merchant':s.get(Merchant,menu.merchant_id).name,'last_price':latest}
 
     @app.get('/api/menu-products',dependencies=[Depends(l.auth)])
     def menu_products(s=Depends(l.db,scope='function')):
@@ -39,6 +39,7 @@ def register(app):
 
     @app.get('/api/merchants/analytics',dependencies=[Depends(l.auth)])
     def analytics(anchor:date|None=None,s=Depends(l.db,scope='function')):
+        resolve=l.category_resolver(s)
         start,end=l.period(anchor or datetime.now(l.TZ).date(),l.settings(s).month_start)
         shops={}
         def shop(name):
@@ -51,7 +52,7 @@ def register(app):
             data['own_amount']+=purchase.own_amount;data['total']+=purchase.total;data['purchase_count']+=1
             for item in s.scalars(select(Item).where(Item.purchase_id==purchase.id)):
                 key=item.menu_product_id or item.product_id or (item.name,item.category)
-                if key not in data['items']:data['items'][key]={'name':item.name,'category':item.category,'quantity':0,'own_amount':0,'total':0}
+                if key not in data['items']:data['items'][key]={'name':item.name,'category':resolve(item.category),'quantity':0,'own_amount':0,'total':0}
                 row=data['items'][key];row['quantity']+=item.quantity;row['own_amount']+=item.own_amount;row['total']+=item.unit_price*item.quantity
         for tx in s.scalars(select(BankTransaction)):
             payment=s.get(Payment,tx.payment_id)

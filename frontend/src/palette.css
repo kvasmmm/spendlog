@@ -56,3 +56,31 @@
 .category-picker{display:flex;flex-direction:column;gap:8px;margin-top:12px;font-size:11px}
 .category-picker select{max-width:100%;width:100%}
 @media(max-width:760px){.menu-library>.section-row{align-items:flex-start}.menu-library .primary{padding:10px 12px;white-space:nowrap}.merchant-analytics>.full,.category-picker select{font-size:16px}.menu-card .product-price strong{font-size:21px}.menu-card .secondary{font-size:11px;padding:10px 8px}}
+.chart-controls{display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.legend{max-height:270px;overflow-y:auto;padding:4px}
+.legend>button{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;text-align:left;color:var(--ink);padding:10px 7px;border-radius:7px;min-height:38px;font-size:11px}
+.legend>button:hover{background:var(--soft)}
+.legend>button>span{min-width:0;overflow-wrap:anywhere}.legend>button b{white-space:nowrap}
+.people-shortcut{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;margin-bottom:22px;text-align:left;border:1px solid var(--line);color:var(--ink)}
+.people-shortcut small{display:block;font-size:10px;color:var(--muted);margin-top:5px}
+.people-shortcut>span{font-size:12px}.people-shortcut b{display:block;margin-top:5px;font-size:18px}
+.category-add,.category-manage-row,.category-manage-row form{display:flex;align-items:center;gap:8px}
+.category-add{margin:18px 0}.category-add input{flex:1;width:100px}
+.category-manage-row{padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.category-manage-row>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.category-manage-row form{width:100%}.category-manage-row input{flex:1;min-width:0;width:100px}
+.share-equation{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:18px 0}
+.share-equation>span{font-size:11px;color:var(--muted);padding:12px;background:var(--surface-alt);border-radius:8px}
+.share-equation strong{display:block;font-size:17px;margin-top:8px;color:var(--ink);overflow-wrap:anywhere}
+.expense-detail{padding:18px 0;border-bottom:1px solid var(--line)}
+.expense-detail .merchant-item{padding-left:0}
+.person-card{margin-bottom:15px}
+.person-card>summary{display:flex;align-items:center;gap:12px;cursor:pointer;list-style:none}
+.person-card>summary::-webkit-details-marker{display:none}
+.person-card-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.person-card small{display:block;font-size:11px;color:var(--muted);margin-top:6px}
+.person-card-money{text-align:right;flex-shrink:0;font-size:13px}
+.person-actions{display:flex;gap:8px;flex-wrap:wrap;padding:18px 0}
+.person-debt{padding:18px 0;border-top:1px solid var(--line)}
+.person-return{display:flex;justify-content:space-between;gap:12px;padding:12px 0;font-size:11px;color:var(--muted)}
+@media(max-width:760px){.chart-controls .text-button{font-size:10px;text-align:right}.people-shortcut{flex-wrap:wrap;padding:16px;gap:13px}.people-shortcut>span:first-child{width:100%}.people-shortcut b{font-size:17px}.share-equation{gap:6px}.share-equation>span{padding:10px 7px;font-size:10px}.share-equation strong{font-size:15px}.category-add input,.category-manage-row input{font-size:16px}.category-add .primary{font-size:11px;padding:12px}.person-card{padding:16px}.person-card>summary{gap:9px}.person-card-name b{font-size:13px}.person-card small{font-size:10px}.person-card-money{font-size:11px}.person-card .person-icon{display:none}.person-debt .section-row b{font-size:12px}}

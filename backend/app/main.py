@@ -7,7 +7,7 @@ from fastapi import FastAPI, Depends, HTTPException, Request, Response, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, delete, update, Integer
 from sqlalchemy.exc import IntegrityError
-from .models import Base, Barcode, BankImport, BankTransaction, BankImportRow, MenuProduct, Product, Merchant, Purchase, Item, Payment, Debt, Setting, Rule, Session, RequestKey, SessionLocal
+from .models import Base, Barcode, BankImport, BankTransaction, BankImportRow, MenuProduct, Person, Product, Merchant, Purchase, Item, Payment, Debt, Setting, Rule, Session, RequestKey, SessionLocal
 from .schemas import PurchaseIn, ProductIn, PaymentIn, SettlementIn, SettingsIn, RuleIn
 
 TZ=ZoneInfo('Asia/Seoul')
@@ -115,7 +115,7 @@ def products(q:str='',s=Depends(db, scope="function")):
     return [product_view(s,p) for p in rows if q.lower() in (p.name+' '+p.barcode).lower()]
 def product_view(s,p):
     latest=s.execute(select(Item.unit_price,Merchant.name).join(Purchase,Item.purchase_id==Purchase.id).join(Merchant).where(Item.product_id==p.id).order_by(Purchase.occurred_at.desc(),Purchase.created_at.desc()).limit(1)).first()
-    return {**dump(p),'last_price':latest[0] if latest else None,'last_merchant':latest[1] if latest else None}
+    return {**dump(p),'category':category_resolver(s)(p.category),'last_price':latest[0] if latest else None,'last_merchant':latest[1] if latest else None}
 @app.post('/api/products',dependencies=[Depends(auth)])
 def add_product(data:ProductIn,s=Depends(db, scope="function")):
     existing=s.scalar(select(Product).where(Product.barcode==data.barcode))
@@ -165,7 +165,7 @@ def write_purchase(s,data,p=None,payment=None):
     if p.total:
         if payment:payment.note=p.note;payment.version+=1
         else:s.add(Payment(purchase_id=p.id,amount=-p.total,kind='purchase',occurred_at=p.occurred_at,note=p.note))
-    if p.total>p.own_amount:s.add(Debt(purchase_id=p.id,person=data.person,direction='receivable',kind=data.debt_kind,principal=p.total-p.own_amount,occurred_at=p.occurred_at))
+    if p.total>p.own_amount:s.add(Debt(purchase_id=p.id,person=data.person,person_id=ensure_person(s,data.person).id,direction='receivable',kind=data.debt_kind,principal=p.total-p.own_amount,occurred_at=p.occurred_at))
     s.flush();return purchase_view(s,p)
 
 def purchase_view(s,p):
@@ -208,7 +208,7 @@ def delete_purchase(id:str,version:int,s=Depends(db, scope="function")):
 
 def debt_view(s,d):
     settled=sum(abs(p.amount) for p in s.scalars(select(Payment).where(Payment.debt_id==d.id,Payment.kind=='settlement')))
-    return {**dump(d),'settled':settled,'remaining':d.principal-settled}
+    return {**dump(d),'person':person_display(s,d),'settled':settled,'remaining':d.principal-settled}
 @app.get('/api/debts',dependencies=[Depends(auth)])
 def debts(s=Depends(db, scope="function")):return [debt_view(s,d) for d in s.scalars(select(Debt).order_by(Debt.occurred_at.desc()))]
 @app.post('/api/debts/{id}/settle',dependencies=[Depends(auth)])
@@ -224,7 +224,7 @@ def write_payment(s,data,p=None):
     if p is None:p=Payment(version=1);s.add(p)
     p.kind=data.kind;p.amount=data.amount*(-1 if data.kind=='loan_given' else 1);p.occurred_at=data.occurred_at.isoformat();p.note=data.note
     if data.kind!='income':
-        d=Debt(person=data.person,direction='receivable' if data.kind=='loan_given' else 'payable',kind='loan',principal=data.amount,occurred_at=p.occurred_at)
+        d=Debt(person=data.person,person_id=ensure_person(s,data.person).id,direction='receivable' if data.kind=='loan_given' else 'payable',kind='loan',principal=data.amount,occurred_at=p.occurred_at)
         s.add(d);s.flush();p.debt_id=d.id
     s.flush();return dump(p)
 @app.post('/api/payments',dependencies=[Depends(auth)])
@@ -234,7 +234,7 @@ def create_payment(data:PaymentIn,s=Depends(db, scope="function"),idempotency_ke
     return remember(s,idempotency_key,fp,write_payment(s,data))
 @app.get('/api/payments',dependencies=[Depends(auth)])
 def payments(s=Depends(db, scope="function")):
-    return [{**dump(p),'bank_transaction_id':s.scalar(select(BankTransaction.id).where(BankTransaction.payment_id==p.id)),'person':s.get(Debt,p.debt_id).person if p.debt_id else ''} for p in s.scalars(select(Payment).order_by(Payment.occurred_at.desc()))]
+    return [{**dump(p),'bank_transaction_id':s.scalar(select(BankTransaction.id).where(BankTransaction.payment_id==p.id)),'person':person_display(s,s.get(Debt,p.debt_id)) if p.debt_id else ''} for p in s.scalars(select(Payment).order_by(Payment.occurred_at.desc()))]
 def detach_payment(s,p):
     if s.scalar(select(BankTransaction.id).where(BankTransaction.payment_id==p.id)):
         fail('Банковские операции изменяются во вкладке банка',409)
@@ -269,6 +269,7 @@ def period(anchor,start_day):
     return start,end
 @app.get('/api/dashboard',dependencies=[Depends(auth)])
 def dashboard(anchor:date | None=None,s=Depends(db, scope="function")):
+    resolve=category_resolver(s)
     pref=settings(s);start,end=period(anchor or datetime.now(TZ).date(),pref.month_start)
     prev,_=period(start-timedelta(days=1),pref.month_start)
     def localday(v):return datetime.fromisoformat(v).astimezone(TZ).date()
@@ -281,7 +282,7 @@ def dashboard(anchor:date | None=None,s=Depends(db, scope="function")):
         shops[s.get(Merchant,p.merchant_id).name]+=p.own_amount
         day=localday(p.occurred_at);days[str(day)]+=p.own_amount;weeks[str(day-timedelta(days=day.weekday()))]+=p.own_amount
         for i in s.scalars(select(Item).where(Item.purchase_id==p.id)):
-            cats[i.category]+=i.own_amount
+            cats[resolve(i.category)]+=i.own_amount
             key=i.menu_product_id or i.product_id or i.name
             if key not in freq:freq[key]={'name':i.name,'quantity':0,'amount':0}
             freq[key]['quantity']+=i.quantity;freq[key]['amount']+=i.own_amount
@@ -290,7 +291,7 @@ def dashboard(anchor:date | None=None,s=Depends(db, scope="function")):
     for payment in pending:
         amount=-payment.amount;day=localday(payment.occurred_at)
         tx=bank_rows.get(payment.id)
-        cats[tx.expense_category if tx and tx.expense_category else 'Банк: без категории']+=amount;shops[tx.merchant if tx and tx.merchant else 'Банковская операция']+=amount
+        cats[resolve(tx.expense_category if tx and tx.expense_category else 'Банк: без категории')]+=amount;shops[tx.merchant if tx and tx.merchant else 'Банковская операция']+=amount
         days[str(day)]+=amount;weeks[str(day-timedelta(days=day.weekday()))]+=amount
     movements=[p for p in pay if start<=localday(p.occurred_at)<end]
     series=[{'name':str(start+timedelta(days=n)),'amount':days[str(start+timedelta(days=n))]} for n in range((end-start).days)]
@@ -299,10 +300,10 @@ def dashboard(anchor:date | None=None,s=Depends(db, scope="function")):
     for _ in range(6):
         a,b=period(cursor,pref.month_start);months.append({'name':str(a),'amount':sum(p.own_amount for p in ps if a<=localday(p.occurred_at)<b)-sum(p.amount for p in unclassified if a<=localday(p.occurred_at)<b) });cursor=a-timedelta(days=1)
     expense=sum(p.own_amount for p in current)-sum(p.amount for p in pending)
-    return {'start':str(start),'end':str(end-timedelta(days=1)),'income':sum(p.amount for p in movements if p.kind=='income'),'expenses':expense,'cash_flow':sum(p.amount for p in movements),'cash_in':sum(p.amount for p in movements if p.amount>0),'cash_out':-sum(p.amount for p in movements if p.amount<0),'previous_expenses':previous,'unclassified_outflow':-sum(p.amount for p in pending),'unclassified_inflow':sum(p.amount for p in movements if p.kind=='bank_unclassified' and p.amount>0),'purchase_count':len(current),'average_purchase':round(sum(p.own_amount for p in current)/len(current)) if current else 0,'daily_average':round(expense/max(1,min((datetime.now(TZ).date()-start).days+1,(end-start).days))),'categories':[{'name':k,'amount':v,'limit':pref.category_limits.get(k,0)} for k,v in sorted(cats.items(),key=lambda x:-x[1])],'merchants':[{'name':k,'amount':v} for k,v in sorted(shops.items(),key=lambda x:-x[1])],'daily':series,'weekly':[{'name':k,'amount':v} for k,v in sorted(weeks.items())],'monthly':months[::-1],'frequent':sorted(freq.values(),key=lambda x:-x['quantity'])[:10],'limit':pref.monthly_limit}
+    return {'start':str(start),'end':str(end-timedelta(days=1)),'income':sum(p.amount for p in movements if p.kind=='income'),'expenses':expense,'cash_flow':sum(p.amount for p in movements),'cash_in':sum(p.amount for p in movements if p.amount>0),'cash_out':-sum(p.amount for p in movements if p.amount<0),'previous_expenses':previous,'unclassified_outflow':-sum(p.amount for p in pending),'unclassified_inflow':sum(p.amount for p in movements if p.kind=='bank_unclassified' and p.amount>0),'purchase_count':len(current),'average_purchase':round(sum(p.own_amount for p in current)/len(current)) if current else 0,'daily_average':round(expense/max(1,min((datetime.now(TZ).date()-start).days+1,(end-start).days))),'categories':[{'name':k,'amount':v,'limit':pref.category_limits.get(k,next((v for raw,v in pref.category_limits.items() if resolve(raw)==k),0))} for k,v in sorted(cats.items(),key=lambda x:-x[1])],'merchants':[{'name':k,'amount':v} for k,v in sorted(shops.items(),key=lambda x:-x[1])],'daily':series,'weekly':[{'name':k,'amount':v} for k,v in sorted(weeks.items())],'monthly':months[::-1],'frequent':sorted(freq.values(),key=lambda x:-x['quantity'])[:10],'limit':pref.monthly_limit}
 
-TABLES={'barcodes':Barcode,'products':Product,'merchants':Merchant,'menu_products':MenuProduct,'purchases':Purchase,'items':Item,'debts':Debt,'payments':Payment,'settings':Setting,'rules':Rule,'request_keys':RequestKey,'bank_imports':BankImport,'bank_transactions':BankTransaction,'bank_import_rows':BankImportRow}
-def snapshot(s):return {'format':'spendlog','version':3,'currency':'KRW','tables':{name:[dump(r) for r in s.scalars(select(cls))] for name,cls in TABLES.items()}}
+TABLES={'barcodes':Barcode,'products':Product,'merchants':Merchant,'menu_products':MenuProduct,'purchases':Purchase,'items':Item,'people':Person,'debts':Debt,'payments':Payment,'settings':Setting,'rules':Rule,'request_keys':RequestKey,'bank_imports':BankImport,'bank_transactions':BankTransaction,'bank_import_rows':BankImportRow}
+def snapshot(s):return {'format':'spendlog','version':4,'currency':'KRW','tables':{name:[dump(r) for r in s.scalars(select(cls))] for name,cls in TABLES.items()}}
 @app.get('/api/export',dependencies=[Depends(auth)])
 def export(format:str='json',s=Depends(db, scope="function")):
     data=snapshot(s)
@@ -315,10 +316,11 @@ def export(format:str='json',s=Depends(db, scope="function")):
 
 def validate_snapshot(data):
     if not isinstance(data,dict):fail('Ожидается объект резервной копии',422)
-    if data.get('format')!='spendlog' or data.get('version') not in (1,2,3) or data.get('currency')!='KRW':fail('Неподдерживаемый формат резервной копии',422)
+    if data.get('format')!='spendlog' or data.get('version') not in (1,2,3,4) or data.get('currency')!='KRW':fail('Неподдерживаемый формат резервной копии',422)
     tables=data.get('tables',{})
     if not isinstance(tables,dict) or any(not isinstance(rows,list) for rows in tables.values()):fail('Некорректные таблицы',422)
     if data['version']<3:tables.setdefault('menu_products',[])
+    if data['version']<4:tables.setdefault('people',[])
     legacy=set(TABLES)-{'barcodes','bank_imports','bank_transactions','bank_import_rows'}
     if data['version']==1 and set(tables)==legacy:
         for name in set(TABLES)-legacy:tables[name]=[]
@@ -352,7 +354,10 @@ def validate_ledger(s):
         if p.total>p.own_amount:
             if not d or d.principal!=p.total-p.own_amount or d.direction!='receivable' or d.kind not in ('friend','reimbursement') or d.occurred_at!=p.occurred_at:fail('Нарушена доля долга',422)
         elif d:fail('Лишний долг покупки',422)
+    for person in s.scalars(select(Person)):
+        if not person.name.strip() or len(person.name)>200 or person.name_key!=person_name_key(person.name) or len(person.note)>2000 or person.version<1:fail('Некорректная карточка человека',422)
     for d in s.scalars(select(Debt)):
+        if d.person_id and not s.get(Person,d.person_id):fail('Не найден человек долга',422)
         canonical_date(d.occurred_at)
         if not d.person.strip() or len(d.person)>200:fail('Некорректное имя',422)
         if d.direction not in ('receivable','payable') or debt_view(s,d)['remaining']<0:fail('Некорректный долг',422)
@@ -377,6 +382,7 @@ def validate_ledger(s):
             if p.purchase_id or p.debt_id or not s.scalar(select(BankTransaction.id).where(BankTransaction.payment_id==p.id)):fail('Банковский платёж без происхождения',422)
         else:fail('Неизвестный тип платежа',422)
     validate_bank_ledger(s)
+    validate_categories(s)
     settings(s)
 @app.post('/api/import',dependencies=[Depends(auth)])
 async def import_data(request:Request,format:str='json',s=Depends(db, scope="function")):
@@ -385,10 +391,11 @@ async def import_data(request:Request,format:str='json',s=Depends(db, scope="fun
     try:
         if format=='json':data=json.loads(raw)
         elif format=='csv':
-            data={'format':'spendlog','version':3,'currency':'KRW','tables':{k:[] for k in TABLES}}
+            data={'format':'spendlog','version':4,'currency':'KRW','tables':{k:[] for k in TABLES}}
             reader=csv.DictReader(io.StringIO(raw.decode('utf-8-sig')))
             if reader.fieldnames!=['table','record_json']:fail('Используйте CSV, экспортированный SpendLog',422)
             for row in reader:data['tables'][row['table']].append(json.loads(row['record_json']))
+            if any('person_id' not in row for row in data['tables']['debts']):data['version']=3
             if any('menu_product_id' not in row for row in data['tables']['items']) or any('expense_category' not in row for row in data['tables']['bank_transactions']):data['version']=2
             if any('created_at' not in row for row in data['tables']['payments']):data['version']=1
         else:fail('Неизвестный формат',422)
@@ -399,6 +406,8 @@ async def import_data(request:Request,format:str='json',s=Depends(db, scope="fun
                 if not isinstance(row,dict):fail('Некорректная запись',422)
                 if data['version']<3 and name=='items':row={'menu_product_id':None,**row}
                 if data['version']<3 and name=='bank_transactions':row={'expense_category':'',**row}
+                legacy_person=name=='debts' and 'person_id' not in row and data['version']<4
+                if legacy_person:row={**row,'person_id':None}
                 legacy_payment=name=='payments' and 'created_at' not in row and data['version']==1
                 if legacy_payment:row={**row,'created_at':row.get('occurred_at')}
                 if set(row)!=set(cols):fail('Неверные поля '+name,422)
@@ -412,10 +421,13 @@ async def import_data(request:Request,format:str='json',s=Depends(db, scope="fun
                 existing=s.get(cls,row[pk])
                 if existing:
                     existing_data=dump(existing)
+                    if legacy_person:row['person_id']=existing_data['person_id']
                     if legacy_payment:row['created_at']=existing_data['created_at']
                     if existing_data!=row:fail('Конфликт ID: копия содержит другую версию записи. Импорт отменён.',409)
                     skipped+=1;continue
                 s.add(cls(**row));s.flush();added+=1
+        for debt in s.scalars(select(Debt)):
+            if not debt.person_id:debt.person_id=ensure_person(s,debt.person).id
         for product in s.scalars(select(Product)):
             if not s.get(Barcode,product.barcode):s.add(Barcode(barcode=product.barcode,name=product.name,category=product.category))
         s.flush()
@@ -428,3 +440,10 @@ register_bank_api(app)
 
 from .menu_api import register as register_menu_api
 register_menu_api(app)
+
+from .category_api import register as register_category_api, resolver as category_resolver, validate as validate_categories
+from .people_api import register as register_people_api, ensure_person, display_name as person_display, name_key as person_name_key
+from .expense_api import register as register_expense_api
+register_category_api(app)
+register_people_api(app)
+register_expense_api(app)

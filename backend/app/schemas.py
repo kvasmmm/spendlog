@@ -91,3 +91,13 @@ class BankClassification(Model):
     version: Annotated[int, Field(strict=True,ge=1)]
 
     category: Annotated[str,Field(max_length=100)] | None = None
+
+class CategoryIn(Model):
+    name: Annotated[str,Field(min_length=1,max_length=100)]
+    active: Annotated[bool,Field(strict=True)] = True
+    version: Annotated[int,Field(strict=True,ge=1)] | None = None
+
+class PersonIn(Model):
+    name: Name
+    note: Annotated[str,Field(max_length=2000)] = ''
+    version: Annotated[int,Field(strict=True,ge=1)] | None = None
