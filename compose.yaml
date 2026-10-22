@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      APP_PASSWORD: ${APP_PASSWORD:?Set APP_PASSWORD in .env (at least 12 characters)}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/spendlog.db}
+    volumes:
+      - spendlog_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_BIND:-0.0.0.0}:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  spendlog_data:

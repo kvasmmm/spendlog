@@ -1,0 +1,58 @@
+/* Neutral surfaces with an indigo accent, shared by both themes. */
+:root{--page:#f4f6fb;--surface:#fff;--surface-alt:#f8fafc;--soft:#eef2ff;--ink:#182235;--muted:#64748b;--line:#e2e8f0;--accent:#4f46e5;--accent-hover:#4338ca;--accent-text:#4338ca;--on-accent:#fff;--positive:#087f6b;--positive-bg:#e6f7f2;--warning:#946313;--warning-bg:#fff7e6;--danger:#be3a45;--danger-bg:#fff0f1;--chart-text:#64748b;--chart-line:#6366f1;--tooltip-bg:#fff;--tooltip-border:#e2e8f0;color-scheme:light}
+:root[data-theme=dark]{--page:#0b1020;--surface:#151d30;--surface-alt:#11192a;--soft:#222c49;--ink:#e5edf8;--muted:#a0afc6;--line:#2b3852;--accent:#818cf8;--accent-hover:#a5b4fc;--accent-text:#b5befd;--on-accent:#10162a;--positive:#6ee7c4;--positive-bg:#14372f;--warning:#f5cc80;--warning-bg:#372d1a;--danger:#fda4af;--danger-bg:#3b202d;--chart-text:#a0afc6;--chart-line:#a5b4fc;--tooltip-bg:#1d2940;--tooltip-border:#394963;color-scheme:dark}
+:root{color:var(--ink);background:var(--page)}
+:root :is(button,input,select){color:inherit}
+:root :is(.sidebar,.topbar,.mobile-nav){background:var(--surface-alt);border-color:var(--line)}
+:root :is(.panel,.stat,.modal,.modal>header,.login-card,.search,input,select){background:var(--surface);color:var(--ink);border-color:var(--line)}
+:root .login-page{background:radial-gradient(ellipse at 80% 15%,var(--soft),transparent 65%),var(--page)}
+:root :is(.brand,.login-brand,.empty h3){color:var(--ink)}
+:root :is(.primary,.mobile-fab,.brand-icon,.toast){background:var(--accent);color:var(--on-accent)}
+:root .primary:hover:not(:disabled){background:var(--accent-hover)}
+:root :is(.secondary,.quick-card .secondary){background:var(--surface);border-color:var(--line);color:var(--accent-text)}
+:root :is(.sidebar nav button.active,.import-tabs button[aria-pressed=true]){background:var(--soft);color:var(--accent-text)}
+:root .sidebar nav i{background:var(--accent)}
+:root :is(.quick-card,.line-builder,.split-panel,.upload-button,.callout,.backup-icon,.section-row select,.import-overview>div,.import-bulk){background:var(--surface-alt);color:var(--ink);border-color:var(--line)}
+:root :is(.stat-icon,.rank,.badge,.product-icon,.person-icon,.transaction-icon,.avatar,.import-group-icon,.import-tabs button,.icon:hover){background:var(--soft);color:var(--accent-text);border-color:var(--line)}
+:root .stat-icon.muted{background:var(--warning-bg);color:var(--warning)}
+:root .transaction-icon.incoming{background:var(--positive-bg);color:var(--positive)}
+:root :is(.sidebar nav button,.icon,.currency,.desktop-breadcrumb,.sidebar-label,.page-heading p,.eyebrow,.period-label,.stat span,.stat small,.subtitle,.donut-label small,.metric-strip span,.rank-row small,.placeholder,.empty,.footer,.transaction-info span,.transaction-info small,.barcode-text,.product-price small,.debt-stats span,.debt-info small,.debt-info span,.field>span,.instructions,.hint,.cart-line span,.catalog-search small,.login-card p,.login-card>small,.local-note small,.settled,.scan-art,.import-overview span,.import-group small,.import-line small,.import-empty,.import-confirm){color:var(--muted)}
+:root :is(.text-button,.brand-period,.green-dot,.mobile-brand span){color:var(--accent-text)}
+:root :is(.positive,.import-ready){color:var(--positive)}
+:root .spend-card{background:linear-gradient(120deg,#34318d,#4f46e5);color:#fff}
+:root .spend-card :is(.section-row,p,small){color:#e1e5ff}
+:root .spend-card .progress i{background:#c7d2fe}
+:root .pale{background:var(--soft)}
+:root .pale i{background:var(--accent)}
+:root :is(.local-note,.metric-strip>div,.rank-row,.footer,.transaction,.product-price,.debt-row,.modal>header,.cart-line,.catalog-search button,.bank-row,.import-group,.import-line,.import-search,.import-confirm){border-color:var(--line)}
+:root .catalog-search button{color:var(--ink)}
+:root input::placeholder{color:var(--muted);opacity:.8}
+:root :is(input,select):focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+:root :is(button,a,summary):focus-visible{outline-color:var(--accent)}
+:root .error{background:var(--danger-bg);color:var(--danger);border-color:var(--danger)}
+:root .success{background:var(--positive-bg);color:var(--positive);border-color:var(--positive)}
+:root :is(.import-attention,.import-line .import-needs-review){color:var(--warning)}
+:root .import-search input{background:transparent;box-shadow:none}
+:root .modal::backdrop{background:#060d2099}
+:root .mobile-nav button{color:var(--muted)}
+:root .mobile-nav button.active{color:var(--accent-text)}
+:root .toast,:root .mobile-fab{box-shadow:0 8px 26px #1e1b4b35}
+.menu-library>.section-row{margin:8px 0 18px}
+.menu-library .toolbar{margin-bottom:18px}
+.menu-store{display:block;font-size:11px;color:var(--muted);margin-top:18px;overflow-wrap:anywhere}
+.menu-card h3{margin-top:9px}
+.menu-quick{margin:14px 0 20px}
+.menu-quick>span{display:block;font-size:11px;color:var(--muted);margin-bottom:10px}
+.menu-quick>div{display:flex;gap:8px;flex-wrap:wrap}
+.menu-quick button{flex-direction:column;align-items:flex-start;gap:5px;padding:10px 12px;min-height:50px}
+.menu-quick b{font-size:11px;color:var(--muted);font-weight:400}
+.merchant-report{border-bottom:1px solid var(--line)}
+.merchant-report>summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px 0;cursor:pointer;list-style:none}
+.merchant-report summary::-webkit-details-marker{display:none}
+.merchant-report b{font-size:13px;font-weight:550;overflow-wrap:anywhere}
+.merchant-report small{display:block;font-size:11px;color:var(--muted);margin-top:6px}
+.merchant-report strong{font-size:14px;white-space:nowrap}
+.merchant-item{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 0 13px 12px;border-top:1px solid var(--line)}
+.category-picker{display:flex;flex-direction:column;gap:8px;margin-top:12px;font-size:11px}
+.category-picker select{max-width:100%;width:100%}
+@media(max-width:760px){.menu-library>.section-row{align-items:flex-start}.menu-library .primary{padding:10px 12px;white-space:nowrap}.merchant-analytics>.full,.category-picker select{font-size:16px}.menu-card .product-price strong{font-size:21px}.menu-card .secondary{font-size:11px;padding:10px 8px}}

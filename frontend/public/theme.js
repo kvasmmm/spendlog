@@ -1,0 +1,1 @@
+try{const theme=localStorage.getItem('spendlog-theme');document.documentElement.dataset.theme=theme==='dark'||(theme!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light'}catch{document.documentElement.dataset.theme=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
